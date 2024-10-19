@@ -11,7 +11,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  Serial.println("Hello, World!");
+  static int count = 0;
+  Serial.printf("Hello, World! count=%d\n", count++);
   delay(1000);
 }
 
