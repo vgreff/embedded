@@ -1,6 +1,14 @@
 #include <Arduino.h>
+#include <vector>
+#include <map>
 
 // put function declarations here:
+
+uint8_t readButtons(void);
+void setLed(uint8_t value, uint8_t position);
+
+
+// https://blog.3d-logic.com/2015/01/10/using-a-tm1638-based-board-with-arduino/
 
 #include "wiring_shift_mod.h"
 
@@ -15,8 +23,29 @@ const int data_pin   = 17;
 #define SCROLL_MODE 1
 #define BUTTON_MODE 2
 
-uint8_t readButtons(void);
-void setLed(uint8_t value, uint8_t position);
+const unsigned char seven_seg_digits_decode_gfedcba[75]= {
+/*  0     1     2     3     4     5     6     7     8     9     :     ;     */
+    0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x00, 0x00, 
+/*  <     =     >     ?     @     A     B     C     D     E     F     G     */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71, 0x3D, 
+/*  H     I     J     K     L     M     N     O     P     Q     R     S     */
+    0x76, 0x30, 0x1E, 0x75, 0x38, 0x55, 0x54, 0x5C, 0x73, 0x67, 0x50, 0x6D, 
+/*  T     U     V     W     X     Y     Z     [     \     ]     ^     _     */
+    0x78, 0x3E, 0x1C, 0x1D, 0x64, 0x6E, 0x5B, 0x00, 0x00, 0x00, 0x00, 0x00, 
+/*  `     a     b     c     d     e     f     g     h     i     j     k     */
+    0x00, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71, 0x3D, 0x76, 0x30, 0x1E, 0x75, 
+/*  l     m     n     o     p     q     r     s     t     u     v     w     */
+    0x38, 0x55, 0x54, 0x5C, 0x73, 0x67, 0x50, 0x6D, 0x78, 0x3E, 0x1C, 0x1D, 
+/*  x     y     z     */
+    0x64, 0x6E, 0x5B
+};
+
+unsigned char decode_7seg(unsigned char chr)
+{ /* Implementation uses ASCII */
+    if (chr > (unsigned char)'z')
+        return 0x00;
+	return seven_seg_digits_decode_gfedcba[chr - '0']; 
+}
 
 void sendCommand(uint8_t value)
 {
@@ -158,6 +187,7 @@ void setLed(uint8_t value, uint8_t position)
 
   sendCommand(0x44);
   digitalWrite(strobe_pin, LOW);
+
   shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, 0xC1 + (position << 1));
   shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, value);
   digitalWrite(strobe_pin, HIGH);
