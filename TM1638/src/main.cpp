@@ -23,6 +23,8 @@ const int data_pin   = 17;
 #define SCROLL_MODE 1
 #define BUTTON_MODE 2
 
+// https://en.wikichip.org/wiki/seven-segment_display/representing_letters 
+
 const unsigned char seven_seg_digits_decode_gfedcba[75]= {
 /*  0     1     2     3     4     5     6     7     8     9     :     ;     */
     0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x00, 0x00, 
@@ -88,7 +90,30 @@ bool counting()
   return digit == 0;
 }
 
-bool scroll()
+bool counting1()
+{
+                       /*0*/ /*1*/ /*2*/ /*3*/ /*4*/ /*5*/ /*6*/ /*7*/ /*8*/ /*9*/
+  uint8_t digits[] = { 0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f };
+
+  static uint8_t digit = 0;
+
+  sendCommand(0x40);
+  digitalWrite(strobe_pin, LOW);
+  shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, 0xc0);
+  // uint8_t position = 0;
+  for(uint8_t position = 0; position < 8; position++)
+  {
+    shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, (position %2 == 0) ? digits[digit] : 0x00) ;
+    shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, 0x00); // led[position] off
+  }
+
+  digitalWrite(strobe_pin, HIGH);
+
+  digit = ++digit % 10;
+  return digit == 0;
+}
+
+bool scroll1()
 {
   uint8_t scrollText[] =
   {
@@ -100,6 +125,42 @@ bool scroll()
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     /*H*/ /*E*/ /*L*/ /*L*/ /*O*/ /*.*/ /*.*/ /*.*/
     0x76, 0x79, 0x38, 0x38, 0x3f, 0x80, 0x80, 0x80,
+  };
+
+  static uint8_t index = 0;
+  uint8_t scrollLength = sizeof(scrollText);
+
+  sendCommand(0x40);
+  digitalWrite(strobe_pin, LOW);
+  shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, 0xc0);
+
+  for(int i = 0; i < 8; i++)
+  {
+    uint8_t c = scrollText[(index + i) % scrollLength];
+
+    shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, c);
+    shiftOutMod(data_pin, clock_pin, LSBFIRST, CLOCK_TYPE, CLOCK_DELAY_US, c != 0 ? 1 : 0); // led[position] on/off
+  }
+
+  digitalWrite(strobe_pin, HIGH);
+
+  index = ++index % (scrollLength << 1);
+
+  return index == 0;
+}
+
+bool scroll()
+{
+  uint8_t scrollText[] =
+  {
+    /* */ /* */ /* */ /* */ /* */ /* */ /* */ /* */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /*H*/ /*E*/ /*L*/ /*L*/ /*O*/ /*.*/ /*.*/ /*.*/
+    0x76, 0x79, 0x38, 0x38, 0x3f, 0x80, 0x80, 0x80,
+    /* */ /* */ /* */ /* */ /* */ /* */ /* */ /* */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /*H*/ /*E*/ /*L*/ /*L*/ /*O*/ /*.*/ /*.*/ /*.*/
+     0x80, 0x76, 0x79, 0x38, 0x38, 0x3f, 0x00, 0x80,
   };
 
   static uint8_t index = 0;
@@ -158,7 +219,8 @@ void buttons()
   {
     uint8_t mask = 0x1 << position;
 
-    setLed(buttons & mask ? 1 : 0, position);
+    setLed(buttons & mask ? ((position>=4)? 255 : 1) : 0, position);
+    // setLed(buttons & mask ? 1 : 0, position);
   }
 }
 
@@ -211,9 +273,11 @@ void loop()
   {
   case COUNTING_MODE:
     mode += counting();
+    // mode += counting1();
     break;
   case SCROLL_MODE:
     mode += scroll();
+    // scroll();
     break;
   case BUTTON_MODE:
     buttons();
